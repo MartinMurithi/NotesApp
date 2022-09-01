@@ -1,0 +1,60 @@
+
+        ============ NOTE TAKING APP ==============
+        We will be using the MVVM architecture containing :
+            1. Room
+            2. Entities
+            3. Data access objects
+            4. Repository
+            5. View Model
+            6. Live Data
+            7. Observer
+            8. SQLite
+
+    === STEPS FOLLOWED ====
+ A. STEP 1 Dependencies
+    1.Add the room and lifecycle dependencies
+    2.Create the entity file and add an Annotation @Entity, this allows room to generate all the necessary code to generate the SQLite table
+    for this object.
+    3.Add an id type and annotate it with @primaryLey and autoGenerate = ture, the id will be for uniquely identifying each row in the table
+    4. We create the constructor, setters and getters methods and then Room takes care of creating all the boiler plate code at runtime
+
+ B. STEP 2 Dao and RoomDatabase
+    1.Create Dao and RoomDatabase.
+        Dao is an interface that defines all the database operations we want to do in our entity.For this we declare methods without bodies and
+        annotate them with @Insert, @Update, @Delete or the generic where we can pass an SQLite Query.. Instead of a cursor, we can let these queries
+        return instances of our own java objects , which we can also wrap into our LiveData, so that our activity/fragment gets notified as soon as a
+        row in the queried database changes
+
+    2.The RoomDataBase is an abstract class that ties all places together and connects the entities to their corresponding Dao
+    3.With FallBackToDestructMigration, we let room recreate our database if we increase the version number.
+    4.We use the Room.dataBaseBuilder where we pass the databaseClass.class and the file name(database)
+
+ C.STEP 3 Repository
+    1. Create the repository, is a java class that abstracts the data layer from the rest of the app and mediates between different data sources
+        like a web service and a local cache.
+        -It hides different database operations (SQLite queries) and provides a clean API to the viewModel.
+        -Since room does not allow database queries on the main thread, we use async task to execute them asynchronously.
+        -LiveData is fetched on a worker thread automatically so we don't have to take care of it.
+        -We will add a RoomDatabase.callBack to our database builder where we populate our database in the onCreate method so we don't start
+        with an empty table. We can also override onOpen if we want execute code everytime our RoomDatabase is opened.
+
+ D. STEP 4 ViewModel
+    1. ViewModel acts as a gateway between the UI controller and the repository. It stores and processes data for the activity/fragment and
+    it doesn't get destroyed on configuration changes, so it does not loose its variable state
+    2. By extending AndroidViewModel, we get a handle to the ApplicationContext, which we use to instantiate our RoomDatabase
+    3. In the main activity, we let the system provide us the correct ViewModel instance by calling ViewModelProviders where we pass the activity or
+     fragment where this ViewModel's lifecycle  should be scoped to.
+     When the activity/fragment is destroyed, the ViewModel will go through it's onCleared method and get removed from the memory.
+     4. In the activities onCreateMethod, we retrieve the LiveData that is stored in the ViewModel and call observe on it, where we pass a LifeCycleOwner
+        and an Observer.
+    5. In the onChange callBack, we get an update on our data whenever something in the corresponding database table changes. The liveData will
+    automatically start and stop sending updates to the activity at the right time in its lifecycle and clean up any unused references.
+
+ E. STEP 5 RECYCLERVIEW
+ We create a recyclerview to display the data from the database.
+ To update the arraylist in the onChanged callback of our LiveData, we add another public method where we pass a new List and call notifyDataSetChanged.
+
+ F. ADD NOTE Fragment
+  1. Fetch the title and priority number from the add note fragment and send it to the recyclerview fragment using
+  FragmentResultManager API.
+  2. Insert the data into the database........
